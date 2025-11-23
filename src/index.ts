@@ -6,7 +6,13 @@ export async function generateImage(imagePath: string, prompt: string): Promise<
     const browser = await puppeteer.launch({
         executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || "C:\\Users\\hp_5c\\Downloads\\chrome-win\\chrome.exe",
         headless: process.env.HEADLESS === "true" ? true : false,
-        args: ["--disable-blink-features=AutomationControlled", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage", "--no-first-run"],
+        args: [
+            "--disable-blink-features=AutomationControlled", //
+            "--no-sandbox",
+            "--disable-gpu",
+            "--disable-dev-shm-usage",
+            "--no-first-run",
+        ],
     });
 
     try {
