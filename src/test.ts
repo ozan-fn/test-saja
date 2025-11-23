@@ -1,13 +1,9 @@
-// Set environment variables for testing
-process.env.PUPPETEER_EXECUTABLE_PATH = "/usr/bin/google-chrome-stable";
-process.env.HEADLESS = "true";
-
 import { generateImage } from "./index";
 
 async function testGenerateImage() {
     try {
         const imagePath = "./test.jpeg"; // Ensure this file exists
-        const prompt = 'Apply the traditional clothing "Baju Bodo" from Sulawesi Selatan to this image.'; // Base64 encoded prompt
+        const prompt = "warna biru coba"; // Base64 encoded prompt
 
         console.log("Starting image generation...");
         const result = await generateImage(imagePath, prompt);
