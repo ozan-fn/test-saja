@@ -1,10 +1,11 @@
+import "dotenv/config";
 import express from "express";
 import multer from "multer";
 import fs from "fs";
 import { generateImage } from "./index";
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 // Counter to ensure maximum 2 processes at a time
 let processingCount = 0;

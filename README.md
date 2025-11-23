@@ -16,7 +16,7 @@ pnpm install
 
 ## Setup
 
-1. Ensure you have Microsoft Edge installed at the default path.
+1. Copy `.env.example` to `.env` and configure your environment variables.
 2. Set up `proxies.json` with your proxy details.
 3. The script uses user data persistence in `./user-data` for login sessions.
 
