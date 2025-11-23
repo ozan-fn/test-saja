@@ -105,8 +105,8 @@ export async function generateImage(imagePath: string, prompt: string): Promise<
     await clickElement(page, 'button[aria-label="Run"]');
 
     try {
-        await page.waitForSelector(".stoppable-spinner", { hidden: false, timeout: 40000 });
-        await page.waitForSelector(".stoppable-spinner", { hidden: true, timeout: 40000 });
+        await page.waitForSelector(".stoppable-spinner", { visible: true, timeout: 40000 });
+        await page.waitForSelector(".stoppable-spinner", { visible: false, timeout: 40000 });
     } catch (error) {}
 
     const imgSrc = await page.evaluate(() => {
