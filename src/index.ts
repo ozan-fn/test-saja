@@ -1,9 +1,18 @@
-import puppeteer, { FileChooser, Page, Browser } from "puppeteer-core";
+import puppeteer, { Page, Browser } from "puppeteer-core";
 import fs from "fs";
 import { clickElement } from "./helpers";
 
 // Global browser instance
 let browser: Browser | null = null;
+const PAGE_USAGE_LIMIT = 5;
+const PAGE_MAX_AGE_MS = 3 * 60 * 1000;
+type ManagedPage = {
+    page: Page;
+    busy: boolean;
+    usage: number;
+    createdAt: number;
+};
+const pagePool: ManagedPage[] = [];
 
 // Save browser data to files
 async function saveBrowserData() {
@@ -48,103 +57,152 @@ async function initBrowser() {
             args: ["--disable-blink-features=AutomationControlled", /* `--proxy-server=${proxyServer}`, */ "--no-sandbox"],
             userDataDir: "./user-data",
         });
+
+        await closeStartupPages();
     }
 }
 
-export async function generateImage(imagePath: string, prompt: string): Promise<Buffer | null> {
-    await initBrowser();
-    if (!browser) {
-        throw new Error("Failed to initialize browser");
-    }
-
+async function closeStartupPages() {
+    if (!browser) return;
     const pages = await browser.pages();
-
-    const aboutBlankPages = pages.filter((p) => p.url() === "about:blank");
-    if (aboutBlankPages.length > 1) {
-        for (let i = 1; i < aboutBlankPages.length; i++) {
-            await aboutBlankPages[i].close();
+    let keptBlank = false;
+    for (const page of pages) {
+        const url = page.url();
+        if (!keptBlank && url === "about:blank") {
+            keptBlank = true;
+            continue;
+        }
+        if (!page.isClosed()) {
+            await page.close();
         }
     }
+}
 
-    // Close all non-about:blank pages
-    for (const page of pages) {
-        if (page.url() !== "about:blank") {
-            await page.close();
+async function acquirePage(): Promise<ManagedPage> {
+    if (!browser) {
+        await initBrowser();
+    }
+    if (!browser) {
+        throw new Error("Browser is not initialized");
+    }
+
+    const now = Date.now();
+    for (const managed of pagePool) {
+        if (!managed.busy && !managed.page.isClosed()) {
+            managed.busy = true;
+            return managed;
         }
     }
 
     const page = await browser.newPage();
+    const managed: ManagedPage = {
+        page,
+        busy: true,
+        usage: 0,
+        createdAt: now,
+    };
+    pagePool.push(managed);
+    return managed;
+}
 
-    await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; WOW64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 OPR/123.0.0.0");
-
-    // Load cookies before navigating
-    if (fs.existsSync("cookies.json")) {
-        const cookies = JSON.parse(fs.readFileSync("cookies.json", "utf-8"));
-        await page.setCookie(...cookies);
-        console.log("Cookies loaded from cookies.json");
-    }
-
-    const proxies = JSON.parse(fs.readFileSync("proxies.json", "utf-8"));
-    const proxy = proxies.proxies[0];
-
-    const url = Buffer.from("aHR0cHM6Ly9haXN0dWRpby5nb29nbGUuY29tL3Byb21wdHMvbmV3X2NoYXQ/bW9kZWw9Z2VtaW5pLTIuNS1mbGFzaC1pbWFnZQ==", "base64").toString("utf8");
-
-    // await page.authenticate({ username: proxy.username, password: proxy.password });
-    await page.goto(url);
-
-    try {
-        await page.waitForSelector("button.ms-button-primary", { timeout: 5000 });
-        await page.evaluate(() => {
-            const buttons = Array.from(document.querySelectorAll("button.ms-button-primary"));
-            const gotItButton = buttons.find((btn) => btn.textContent?.trim() === "Got it");
-            if (gotItButton) {
-                (gotItButton as HTMLElement).click();
-            }
-        });
-    } catch (error) {
-        console.log("Got it button not found, skipping");
-    }
-
-    await clickElement(page, 'button[iconname="add_circle"]', { delay: 500 });
-
-    const [fileChooser] = await Promise.all([
-        page.waitForFileChooser(), //
-        clickElement(page, 'button[aria-label="Upload File"]', { delay: 300 }),
-    ]);
-    await fileChooser.accept([imagePath]);
-
-    await page.type(
-        'textarea[aria-label="Type something or tab to choose an example prompt"]', //
-        prompt
-    );
-
-    await clickElement(page, 'button[aria-label="Run"]');
-
-    try {
-        await page.waitForSelector('button[aria-label="Run"][aria-disabled="false"]', { visible: true, timeout: 40000 });
-        await page.waitForSelector('button[aria-label="Run"][aria-disabled="true"]', { visible: true, timeout: 40000 });
-    } catch (error) {}
-
-    const imgSrc = await page.evaluate(() => {
-        const div = document.querySelector("div.chat-session-content");
-        if (div && div.children.length > 1) {
-            const secondLast = div.children[div.children.length - 2];
-            const img = secondLast.querySelector("img");
-            return img ? img.src : null;
+async function releasePage(managed: ManagedPage) {
+    if (managed.page.isClosed()) {
+        const index = pagePool.indexOf(managed);
+        if (index >= 0) {
+            pagePool.splice(index, 1);
         }
+        return;
+    }
+
+    managed.busy = false;
+    managed.usage += 1;
+    const age = Date.now() - managed.createdAt;
+    const shouldClose = managed.usage >= PAGE_USAGE_LIMIT || age >= PAGE_MAX_AGE_MS;
+
+    if (shouldClose) {
+        await managed.page.close().catch(() => {});
+        const index = pagePool.indexOf(managed);
+        if (index >= 0) {
+            pagePool.splice(index, 1);
+        }
+        return;
+    }
+
+    await managed.page.goto("about:blank").catch(() => {});
+}
+
+async function withManagedPage<T>(fn: (page: Page) => Promise<T>): Promise<T> {
+    const managedPage = await acquirePage();
+    try {
+        return await fn(managedPage.page);
+    } finally {
+        await releasePage(managedPage);
+    }
+}
+
+export async function generateImage(imagePath: string, prompt: string): Promise<Buffer | null> {
+    return withManagedPage(async (page) => {
+        await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; WOW64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 OPR/123.0.0.0");
+
+        if (fs.existsSync("cookies.json")) {
+            const cookies = JSON.parse(fs.readFileSync("cookies.json", "utf-8"));
+            await page.setCookie(...cookies);
+            console.log("Cookies loaded from cookies.json");
+        }
+
+        const proxies = JSON.parse(fs.readFileSync("proxies.json", "utf-8"));
+        const proxy = proxies.proxies[0];
+
+        const url = Buffer.from("aHR0cHM6Ly9haXN0dWRpby5nb29nbGUuY29tL3Byb21wdHMvbmV3X2NoYXQ/bW9kZWw9Z2VtaW5pLTIuNS1mbGFzaC1pbWFnZQ==", "base64").toString("utf8");
+
+        await page.goto(url);
+
+        try {
+            await page.waitForSelector("button.ms-button-primary", { timeout: 5000 });
+            await page.evaluate(() => {
+                const buttons = Array.from(document.querySelectorAll("button.ms-button-primary"));
+                const gotItButton = buttons.find((btn) => btn.textContent?.trim() === "Got it");
+                if (gotItButton) {
+                    (gotItButton as HTMLElement).click();
+                }
+            });
+        } catch (error) {
+            console.log("Got it button not found, skipping");
+        }
+
+        await clickElement(page, 'button[iconname="add_circle"]', { delay: 500 });
+
+        const [fileChooser] = await Promise.all([page.waitForFileChooser(), clickElement(page, 'button[aria-label="Upload File"]', { delay: 300 })]);
+        await fileChooser.accept([imagePath]);
+
+        await page.type('textarea[aria-label="Type something or tab to choose an example prompt"]', prompt);
+
+        await clickElement(page, 'button[aria-label="Run"]');
+
+        try {
+            await page.waitForSelector('button[aria-label="Run"][aria-disabled="false"]', { visible: true, timeout: 40000 });
+            await page.waitForSelector('button[aria-label="Run"][aria-disabled="true"]', { visible: true, timeout: 40000 });
+        } catch (error) {
+            /* ignore */
+        }
+
+        const imgSrc = await page.evaluate(() => {
+            const div = document.querySelector("div.chat-session-content");
+            if (div && div.children.length > 1) {
+                const secondLast = div.children[div.children.length - 2];
+                const img = secondLast.querySelector("img");
+                return img ? img.src : null;
+            }
+            return null;
+        });
+
+        if (imgSrc && imgSrc.startsWith("data:image/")) {
+            const base64Data = imgSrc.split(",")[1];
+            console.log("Image generated successfully");
+            return Buffer.from(base64Data, "base64");
+        }
+
+        console.log("No base64 image found");
         return null;
     });
-
-    if (imgSrc && imgSrc.startsWith("data:image/")) {
-        const base64Data = imgSrc.split(",")[1];
-        const buffer = Buffer.from(base64Data, "base64");
-        console.log("Image generated successfully");
-        await page.close();
-        return buffer;
-    } else {
-        console.log("No base64 image found");
-        await page.close();
-        // await saveBrowserData();
-        return null;
-    }
 }
