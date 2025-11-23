@@ -19,6 +19,8 @@ if (!fs.existsSync("./tmp")) {
     fs.mkdirSync("./tmp");
 }
 
+app.get("/", (req, res) => res.send("OK"));
+
 app.post("/generate", upload.single("image"), async (req, res) => {
     if (processingCount >= 10) {
         return res.status(429).json({ error: "Maximum 10 requests are being processed. Please try again later." });
