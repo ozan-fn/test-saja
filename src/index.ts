@@ -74,7 +74,7 @@ export async function generateImage(imagePath: string, prompt: string): Promise<
     await page.authenticate({ username: proxy.username, password: proxy.password });
     await page.goto(url);
 
-    await page.click('button[iconname="add_circle"]');
+    // await page.click('button[iconname="add_circle"]');
     await clickElement(page, 'button[iconname="add_circle"]', { delay: 500 });
 
     const [fileChooser] = await Promise.all([

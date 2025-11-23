@@ -1,5 +1,5 @@
 // Set environment variables for testing
-process.env.PUPPETEER_EXECUTABLE_PATH = "/home/ozan/.cache/puppeteer/chrome/linux-142.0.7444.175/chrome-linux64/chrome";
+process.env.PUPPETEER_EXECUTABLE_PATH = "/usr/bin/google-chrome-stable";
 process.env.HEADLESS = "true";
 
 import { generateImage } from "./index";

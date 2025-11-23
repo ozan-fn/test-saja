@@ -1,8 +1,8 @@
 {
     "proxies": [
         {
-            "host": "142.111.48.253",
-            "port": 7030,
+            "host": "142.111.67.146",
+            "port": 5611,
             "username": "kauhwjxz",
             "password": "nz8hufnch0pg"
         }
