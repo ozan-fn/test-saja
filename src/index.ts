@@ -5,6 +5,36 @@ import { clickElement } from "./helpers";
 // Global browser instance
 let browser: Browser | null = null;
 
+// Save browser data to files
+async function saveBrowserData() {
+    if (!browser) return;
+
+    try {
+        const pages = await browser.pages();
+        const activePage = pages.find((p) => p.url().includes("aistudio.google.com"));
+
+        let pageToUse: Page;
+        if (activePage) {
+            pageToUse = activePage;
+        } else {
+            pageToUse = await browser.newPage();
+            const url = Buffer.from("aHR0cHM6Ly9haXN0dWRpby5nb29nbGUuY29tL3Byb21wdHMvbmV3X2NoYXQ/bW9kZWw9Z2VtaW5pLTIuNS1mbGFzaC1pbWFnZQ==", "base64").toString("utf8");
+            await pageToUse.goto(url, { waitUntil: "networkidle2" });
+        }
+
+        // Save cookies
+        const cookies = await pageToUse.cookies();
+        fs.writeFileSync("cookies.json", JSON.stringify(cookies, null, 2));
+        console.log("Cookies saved to cookies.json");
+
+        if (!activePage) {
+            await pageToUse.close();
+        }
+    } catch (error) {
+        console.error("Error saving browser data:", error);
+    }
+}
+
 // Initialize browser
 async function initBrowser() {
     if (!browser) {
@@ -21,24 +51,6 @@ async function initBrowser() {
     }
 }
 
-// Function to perform Google login
-async function performLogin(page: Page) {
-    console.log("Performing login...");
-
-    // Enter email
-    await page.type('input[type="email"]', "2586ozan");
-    await clickElement(page, "#identifierNext");
-
-    // Wait for password field
-    await page.waitForSelector('input[name="Passwd"]', { timeout: 10000, visible: true });
-    await page.type('input[name="Passwd"]', "20050806");
-    await clickElement(page, "#passwordNext", { delay: 700 });
-
-    // Wait for login to complete
-    await page.waitForNavigation({ waitUntil: "networkidle0", timeout: 30000 });
-    console.log("Login successful");
-}
-
 export async function generateImage(imagePath: string, prompt: string): Promise<Buffer | null> {
     await initBrowser();
     if (!browser) {
@@ -46,6 +58,14 @@ export async function generateImage(imagePath: string, prompt: string): Promise<
     }
 
     const page = await browser.newPage();
+
+    // Load cookies before navigating
+    if (fs.existsSync("cookies.json")) {
+        const cookies = JSON.parse(fs.readFileSync("cookies.json", "utf-8"));
+        await page.setCookie(...cookies);
+        console.log("Cookies loaded from cookies.json");
+    }
+
     const proxies = JSON.parse(fs.readFileSync("proxies.json", "utf-8"));
     const proxy = proxies.proxies[0];
 
@@ -54,16 +74,8 @@ export async function generateImage(imagePath: string, prompt: string): Promise<
     await page.authenticate({ username: proxy.username, password: proxy.password });
     await page.goto(url);
 
-    try {
-        await page.waitForSelector('input[type="email"]', { timeout: 5000, visible: true });
-        await performLogin(page);
-
-        await clickElement(page, 'button[iconname="add_circle"]');
-    } catch (e) {
-        console.log("No login required");
-    }
-
     await clickElement(page, 'button[iconname="add_circle"]');
+    await clickElement(page, 'button[iconname="add_circle"]', { delay: 500 });
 
     const [fileChooser] = await Promise.all([
         page.waitForFileChooser(), //
@@ -100,6 +112,7 @@ export async function generateImage(imagePath: string, prompt: string): Promise<
     } else {
         console.log("No base64 image found");
         await page.close();
+        // await saveBrowserData();
         return null;
     }
 }
