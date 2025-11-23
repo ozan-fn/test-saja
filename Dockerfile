@@ -26,9 +26,6 @@ RUN npm install -g pnpm && pnpm install
 # Copy source code
 COPY . .
 
-# Unzip user-data if exists
-RUN if [ -f user-data.zip ]; then unzip user-data.zip && rm user-data.zip; fi
-
 # Set environment variables for Docker
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
 ENV HEADLESS=true
