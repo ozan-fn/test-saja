@@ -4,7 +4,7 @@ import { generateImage } from "./index";
 async function testGenerateImage() {
     try {
         const imagePath = "./test.jpeg"; // Ensure this file exists
-        const prompt = "warna biru coba"; // Base64 encoded prompt
+        const prompt = "buat gambar ini menggunakan baju adat jawa"; // Base64 encoded prompt
 
         console.log("Starting image generation...");
         const result = await generateImage(imagePath, prompt);

@@ -57,6 +57,22 @@ export async function generateImage(imagePath: string, prompt: string): Promise<
         throw new Error("Failed to initialize browser");
     }
 
+    const pages = await browser.pages();
+
+    const aboutBlankPages = pages.filter((p) => p.url() === "about:blank");
+    if (aboutBlankPages.length > 1) {
+        for (let i = 1; i < aboutBlankPages.length; i++) {
+            await aboutBlankPages[i].close();
+        }
+    }
+
+    // Close all non-about:blank pages
+    for (const page of pages) {
+        if (page.url() !== "about:blank") {
+            await page.close();
+        }
+    }
+
     const page = await browser.newPage();
 
     await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; WOW64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 OPR/123.0.0.0");
@@ -105,8 +121,8 @@ export async function generateImage(imagePath: string, prompt: string): Promise<
     await clickElement(page, 'button[aria-label="Run"]');
 
     try {
-        await page.waitForSelector(".stoppable-spinner", { visible: true, timeout: 40000 });
-        await page.waitForSelector(".stoppable-spinner", { visible: false, timeout: 40000 });
+        await page.waitForSelector('button[aria-label="Run"][aria-disabled="false"]', { visible: true, timeout: 40000 });
+        await page.waitForSelector('button[aria-label="Run"][aria-disabled="true"]', { visible: true, timeout: 40000 });
     } catch (error) {}
 
     const imgSrc = await page.evaluate(() => {
