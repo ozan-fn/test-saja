@@ -20,7 +20,7 @@ if (!fs.existsSync("./tmp")) {
 }
 
 app.post("/generate", upload.single("image"), async (req, res) => {
-    if (processingCount >= 2) {
+    if (processingCount >= 1) {
         return res.status(429).json({ error: "Maximum 2 requests are being processed. Please try again later." });
     }
 
