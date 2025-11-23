@@ -45,7 +45,7 @@ async function initBrowser() {
         browser = await puppeteer.launch({
             executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
             headless: process.env.HEADLESS === "true" ? true : false,
-            args: ["--disable-blink-features=AutomationControlled", `--proxy-server=${proxyServer}`, "--no-sandbox", "--disable-setuid-sandbox"],
+            args: ["--disable-blink-features=AutomationControlled", /* `--proxy-server=${proxyServer}`, */ "--no-sandbox", "--disable-setuid-sandbox"],
             userDataDir: "./user-data",
         });
     }
@@ -73,7 +73,7 @@ export async function generateImage(imagePath: string, prompt: string): Promise<
 
     const url = Buffer.from("aHR0cHM6Ly9haXN0dWRpby5nb29nbGUuY29tL3Byb21wdHMvbmV3X2NoYXQ/bW9kZWw9Z2VtaW5pLTIuNS1mbGFzaC1pbWFnZQ==", "base64").toString("utf8");
 
-    await page.authenticate({ username: proxy.username, password: proxy.password });
+    // await page.authenticate({ username: proxy.username, password: proxy.password });
     await page.goto(url);
 
     try {
