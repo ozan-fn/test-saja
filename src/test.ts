@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { generateImage } from "./index";
 
 async function testGenerateImage() {
