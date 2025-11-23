@@ -21,7 +21,7 @@ WORKDIR /app
 COPY package.json ./
 
 # Install dependencies
-RUN npm install -g pnpm && pnpm install
+RUN npm install
 
 # Copy source code
 COPY . .
@@ -36,4 +36,4 @@ RUN mkdir -p /app/tmp
 EXPOSE 3000
 
 # Run the app
-CMD ["pnpm", "start"]
+CMD ["npm", "start"]
