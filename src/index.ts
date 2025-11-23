@@ -77,8 +77,18 @@ export async function generateImage(imagePath: string, prompt: string): Promise<
     await page.goto(url);
 
     try {
-        await page.click('button[iconname="add_circle"]');
-    } catch (error) {}
+        await page.waitForSelector("button.ms-button-primary", { timeout: 5000 });
+        await page.evaluate(() => {
+            const buttons = Array.from(document.querySelectorAll("button.ms-button-primary"));
+            const gotItButton = buttons.find((btn) => btn.textContent?.trim() === "Got it");
+            if (gotItButton) {
+                (gotItButton as HTMLElement).click();
+            }
+        });
+    } catch (error) {
+        console.log("Got it button not found, skipping");
+    }
+
     await clickElement(page, 'button[iconname="add_circle"]', { delay: 500 });
 
     const [fileChooser] = await Promise.all([
