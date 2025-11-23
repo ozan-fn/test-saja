@@ -45,7 +45,7 @@ async function initBrowser() {
         browser = await puppeteer.launch({
             executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
             headless: process.env.HEADLESS === "true" ? true : false,
-            args: ["--disable-blink-features=AutomationControlled", "--no-sandbox", "--disable-setuid-sandbox"],
+            args: ["--disable-blink-features=AutomationControlled", /* `--proxy-server=${proxyServer}`, */ "--no-sandbox", "--disable-setuid-sandbox"],
             userDataDir: "./user-data",
         });
     }
@@ -76,7 +76,9 @@ export async function generateImage(imagePath: string, prompt: string): Promise<
     // await page.authenticate({ username: proxy.username, password: proxy.password });
     await page.goto(url);
 
-    // await page.click('button[iconname="add_circle"]');
+    try {
+        await page.click('button[iconname="add_circle"]');
+    } catch (error) {}
     await clickElement(page, 'button[iconname="add_circle"]', { delay: 500 });
 
     const [fileChooser] = await Promise.all([
