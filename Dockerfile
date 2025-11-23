@@ -21,7 +21,7 @@ WORKDIR /app
 COPY package.json ./
 
 # Install dependencies
-RUN npm install
+RUN npm install -g yarn && yarn install
 
 # Copy source code
 COPY . .
@@ -36,4 +36,4 @@ RUN mkdir -p /app/tmp
 EXPOSE 3000
 
 # Run the app
-CMD ["npm", "start"]
+CMD ["yarn", "start"]
