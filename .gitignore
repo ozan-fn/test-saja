@@ -5,14 +5,7 @@ pnpm-lock.yaml
 # Build output
 dist/
 
-# User data
-user-data/Cache/
-user-data/Code Cache/
-user-data/GPUCache/
-user-data/Service Worker/CacheStorage/
-user-data/Service Worker/ScriptCache/
-user-data/ShaderCache/
-user-data/Storage/ext/
+# User data - now tracked for persistence
 
 # Temporary files
 uploads/

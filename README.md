@@ -18,7 +18,7 @@ pnpm install
 
 1. Copy `.env.example` to `.env` and configure your environment variables.
 2. Set up `proxies.json` with your proxy details.
-3. The script uses user data persistence in `./user-data` for login sessions.
+3. The script uses user data persistence in `./user-data` for login sessions. This directory is committed to the repo for shared persistence across deployments.
 
 ## Running the API
 
@@ -27,6 +27,17 @@ pnpm start
 ```
 
 The server will run on http://localhost:3000.
+
+## Docker
+
+```bash
+docker build -t gemini-imagen .
+docker run -p 3000:3000 \
+  -v $(pwd)/proxies.json:/app/proxies.json \
+  gemini-imagen
+```
+
+Note: `user-data` is included in the image for session persistence across deployments.
 
 ## API Endpoint
 
