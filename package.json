@@ -6,7 +6,8 @@
     "scripts": {
         "build": "tsc",
         "dev": "tsx watch src/server.ts",
-        "start": "tsx src/server.ts"
+        "start": "tsx src/server.ts",
+        "zip-userdata": "powershell Compress-Archive -Path user-data -DestinationPath user-data.zip -Force"
     },
     "dependencies": {
         "@types/express": "^5.0.5",

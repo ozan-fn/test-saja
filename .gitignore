@@ -5,7 +5,9 @@ pnpm-lock.yaml
 # Build output
 dist/
 
-# User data - now tracked for persistence
+# User data
+user-data
+!user-data.zip
 
 # Temporary files
 uploads/
