@@ -1,147 +1,16 @@
-import puppeteer, { Page, Browser } from "puppeteer-core";
+import puppeteer from "puppeteer-core";
 import fs from "fs";
 import { clickElement } from "./helpers";
 
-// Global browser instance
-let browser: Browser | null = null;
-const PAGE_USAGE_LIMIT = 5;
-const PAGE_MAX_AGE_MS = 3 * 60 * 1000;
-type ManagedPage = {
-    page: Page;
-    busy: boolean;
-    usage: number;
-    createdAt: number;
-};
-const pagePool: ManagedPage[] = [];
-
-// Save browser data to files
-async function saveBrowserData() {
-    if (!browser) return;
-
-    try {
-        const pages = await browser.pages();
-        const activePage = pages.find((p) => p.url().includes("aistudio.google.com"));
-
-        let pageToUse: Page;
-        if (activePage) {
-            pageToUse = activePage;
-        } else {
-            pageToUse = await browser.newPage();
-            const url = Buffer.from("aHR0cHM6Ly9haXN0dWRpby5nb29nbGUuY29tL3Byb21wdHMvbmV3X2NoYXQ/bW9kZWw9Z2VtaW5pLTIuNS1mbGFzaC1pbWFnZQ==", "base64").toString("utf8");
-            await pageToUse.goto(url, { waitUntil: "networkidle2" });
-        }
-
-        // Save cookies
-        const cookies = await pageToUse.cookies();
-        fs.writeFileSync("cookies.json", JSON.stringify(cookies, null, 2));
-        console.log("Cookies saved to cookies.json");
-
-        if (!activePage) {
-            await pageToUse.close();
-        }
-    } catch (error) {
-        console.error("Error saving browser data:", error);
-    }
-}
-
-// Initialize browser
-async function initBrowser() {
-    if (!browser) {
-        const proxies = JSON.parse(fs.readFileSync("proxies.json", "utf-8"));
-        const proxy = proxies.proxies[0];
-        const proxyServer = `${proxy.host}:${proxy.port}`;
-
-        browser = await puppeteer.launch({
-            executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
-            headless: process.env.HEADLESS === "true" ? true : false,
-            args: ["--disable-blink-features=AutomationControlled", /* `--proxy-server=${proxyServer}`, */ "--no-sandbox"],
-            userDataDir: "./user-data",
-        });
-
-        await closeStartupPages();
-    }
-}
-
-async function closeStartupPages() {
-    if (!browser) return;
-    const pages = await browser.pages();
-    let keptBlank = false;
-    for (const page of pages) {
-        const url = page.url();
-        if (!keptBlank && url === "about:blank") {
-            keptBlank = true;
-            continue;
-        }
-        if (!page.isClosed()) {
-            await page.close();
-        }
-    }
-}
-
-async function acquirePage(): Promise<ManagedPage> {
-    if (!browser) {
-        await initBrowser();
-    }
-    if (!browser) {
-        throw new Error("Browser is not initialized");
-    }
-
-    const now = Date.now();
-    for (const managed of pagePool) {
-        if (!managed.busy && !managed.page.isClosed()) {
-            managed.busy = true;
-            return managed;
-        }
-    }
-
-    const page = await browser.newPage();
-    const managed: ManagedPage = {
-        page,
-        busy: true,
-        usage: 0,
-        createdAt: now,
-    };
-    pagePool.push(managed);
-    return managed;
-}
-
-async function releasePage(managed: ManagedPage) {
-    if (managed.page.isClosed()) {
-        const index = pagePool.indexOf(managed);
-        if (index >= 0) {
-            pagePool.splice(index, 1);
-        }
-        return;
-    }
-
-    managed.busy = false;
-    managed.usage += 1;
-    const age = Date.now() - managed.createdAt;
-    const shouldClose = managed.usage >= PAGE_USAGE_LIMIT || age >= PAGE_MAX_AGE_MS;
-
-    if (shouldClose) {
-        await managed.page.close().catch(() => {});
-        const index = pagePool.indexOf(managed);
-        if (index >= 0) {
-            pagePool.splice(index, 1);
-        }
-        return;
-    }
-
-    await managed.page.goto("about:blank").catch(() => {});
-}
-
-async function withManagedPage<T>(fn: (page: Page) => Promise<T>): Promise<T> {
-    const managedPage = await acquirePage();
-    try {
-        return await fn(managedPage.page);
-    } finally {
-        await releasePage(managedPage);
-    }
-}
-
 export async function generateImage(imagePath: string, prompt: string): Promise<Buffer | null> {
-    return withManagedPage(async (page) => {
+    const browser = await puppeteer.launch({
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || "C:\\Users\\hp_5c\\Downloads\\chrome-win\\chrome.exe",
+        headless: process.env.HEADLESS === "true" ? true : false,
+        args: ["--disable-blink-features=AutomationControlled", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage", "--no-first-run"],
+    });
+
+    try {
+        const page = await browser.newPage();
         await page.setUserAgent("Mozilla/5.0 (Windows NT 10.0; WOW64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36 OPR/123.0.0.0");
 
         if (fs.existsSync("cookies.json")) {
@@ -149,9 +18,6 @@ export async function generateImage(imagePath: string, prompt: string): Promise<
             await page.setCookie(...cookies);
             console.log("Cookies loaded from cookies.json");
         }
-
-        const proxies = JSON.parse(fs.readFileSync("proxies.json", "utf-8"));
-        const proxy = proxies.proxies[0];
 
         const url = Buffer.from("aHR0cHM6Ly9haXN0dWRpby5nb29nbGUuY29tL3Byb21wdHMvbmV3X2NoYXQ/bW9kZWw9Z2VtaW5pLTIuNS1mbGFzaC1pbWFnZQ==", "base64").toString("utf8");
 
@@ -170,9 +36,20 @@ export async function generateImage(imagePath: string, prompt: string): Promise<
             console.log("Got it button not found, skipping");
         }
 
-        await clickElement(page, 'button[iconname="add_circle"]', { delay: 500 });
+        let uploadVisible = false;
+        do {
+            try {
+                await page.waitForSelector('button[aria-label="Upload File"]', { visible: true, timeout: 1000 });
+                uploadVisible = true;
+            } catch {
+                await clickElement(page, 'button[iconname="add_circle"]', { delay: 500 });
+            }
+        } while (!uploadVisible);
 
-        const [fileChooser] = await Promise.all([page.waitForFileChooser(), clickElement(page, 'button[aria-label="Upload File"]', { delay: 300 })]);
+        const [fileChooser] = await Promise.all([
+            page.waitForFileChooser(), //
+            clickElement(page, 'button[aria-label="Upload File"]', { delay: 300 }),
+        ]);
         await fileChooser.accept([imagePath]);
 
         await page.type('textarea[aria-label="Type something or tab to choose an example prompt"]', prompt);
@@ -204,5 +81,7 @@ export async function generateImage(imagePath: string, prompt: string): Promise<
 
         console.log("No base64 image found");
         return null;
-    });
+    } finally {
+        await browser.close();
+    }
 }
