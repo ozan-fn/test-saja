@@ -91,7 +91,7 @@ export async function generateImage(imagePath: string, prompt: string): Promise<
     await clickElement(page, 'button[aria-label="Run"]');
 
     await page.waitForSelector(".stoppable-spinner", { hidden: false });
-    await page.waitForSelector(".stoppable-spinner", { hidden: true });
+    await page.waitForSelector(".stoppable-spinner", { hidden: true, timeout: 240000 });
 
     const imgSrc = await page.evaluate(() => {
         const div = document.querySelector("div.chat-session-content");

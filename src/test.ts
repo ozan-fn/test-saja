@@ -1,6 +1,6 @@
 // Set environment variables for testing
 process.env.PUPPETEER_EXECUTABLE_PATH = "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
-process.env.HEADLESS = "false";
+process.env.HEADLESS = "true";
 
 import { generateImage } from "./index";
 
