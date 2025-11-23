@@ -45,7 +45,7 @@ async function initBrowser() {
         browser = await puppeteer.launch({
             executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
             headless: process.env.HEADLESS === "true" ? true : false,
-            args: ["--disable-blink-features=AutomationControlled", /* `--proxy-server=${proxyServer}`, */ "--no-sandbox", "--disable-setuid-sandbox"],
+            args: ["--disable-blink-features=AutomationControlled" /* `--proxy-server=${proxyServer}`, */],
             userDataDir: "./user-data",
         });
     }
