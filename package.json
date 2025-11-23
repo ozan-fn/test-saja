@@ -1,0 +1,23 @@
+{
+    "name": "gemini-imagen-api",
+    "version": "1.0.0",
+    "description": "REST API for generating images using Gemini AI Studio automation",
+    "main": "dist/index.js",
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsx watch src/server.ts",
+        "start": "tsx src/server.ts"
+    },
+    "dependencies": {
+        "@types/express": "^5.0.5",
+        "@types/multer": "^2.0.0",
+        "express": "^5.1.0",
+        "multer": "^2.0.2",
+        "puppeteer-core": "^21.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "^20.0.0",
+        "tsx": "^4.0.0",
+        "typescript": "^5.0.0"
+    }
+}
