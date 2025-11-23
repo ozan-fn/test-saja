@@ -20,9 +20,6 @@ WORKDIR /app
 # Copy package files
 COPY package.json ./
 
-# Set DNS to Google for better connectivity
-RUN echo 'nameserver 8.8.8.8' > /etc/resolv.conf
-
 # Install dependencies
 RUN npm install -g yarn && yarn install
 
