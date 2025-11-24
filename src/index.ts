@@ -110,6 +110,19 @@ export async function generateImage(imagePath: string, prompt: string): Promise<
         console.log("No base64 image found");
         return null;
     } finally {
+        // try {
+        //     console.log("Saving cookies...");
+        //     const pages = await browser.pages();
+        //     const activePage = pages.find((p) => p.url().includes("aistudio.google.com"));
+        //     if (activePage) {
+        //         const cookies = await activePage.cookies();
+        //         fs.writeFileSync("cookies.json", JSON.stringify(cookies, null, 2));
+        //         console.log("Cookies saved to cookies.json");
+        //     }
+        // } catch (error) {
+        //     console.log("Failed to save cookies:", error);
+        // }
+
         console.log("Closing browser...");
         await browser.close();
         console.log("Browser closed");
