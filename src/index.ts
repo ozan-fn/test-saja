@@ -91,23 +91,27 @@ export async function generateImage(imagePath: string, prompt: string): Promise<
         }
 
         console.log("Extracting generated image...");
-        const imgSrc = await page.evaluate(() => {
-            const div = document.querySelector("div.chat-session-content");
-            if (div && div.children.length > 1) {
-                const secondLast = div.children[div.children.length - 2];
-                const img = secondLast.querySelector("img");
-                return img ? img.src : null;
+        const startTime = Date.now();
+        while (Date.now() - startTime < 40000) {
+            const imgSrc = await page.evaluate(() => {
+                const div = document.querySelector("div.chat-session-content");
+                if (div && div.children.length > 1) {
+                    const secondLast = div.children[div.children.length - 2];
+                    const img = secondLast.querySelector("img");
+                    return img ? img.src : null;
+                }
+                return null;
+            });
+
+            if (imgSrc && imgSrc.startsWith("data:image/")) {
+                const base64Data = imgSrc.split(",")[1];
+                console.log("Image generated successfully");
+                return Buffer.from(base64Data, "base64");
             }
-            return null;
-        });
 
-        if (imgSrc && imgSrc.startsWith("data:image/")) {
-            const base64Data = imgSrc.split(",")[1];
-            console.log("Image generated successfully");
-            return Buffer.from(base64Data, "base64");
+            await new Promise((resolve) => setTimeout(resolve, 1000));
         }
-
-        console.log("No base64 image found");
+        console.log("Timeout: No image found");
         return null;
     } finally {
         // try {
