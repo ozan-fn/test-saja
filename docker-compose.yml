@@ -1,17 +1,11 @@
 services:
-  gemini-imagen:
-    build: .
-    network_mode: host
-    volumes:
-      - ./tmp:/app/tmp
-      - ./user-data:/app/user-data
-    environment:
-      - NODE_ENV=production
-    restart: unless-stopped
-
-  nginx:
-    image: nginx:alpine
-    network_mode: host
-    volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf
-    restart: unless-stopped
+    gemini-imagen:
+        build: .
+        network_mode: host
+        volumes:
+            - ./tmp:/app/tmp
+            - ./user-data:/app/user-data
+        environment:
+            - NODE_ENV=production
+            - PORT=${PORT}
+        restart: unless-stopped

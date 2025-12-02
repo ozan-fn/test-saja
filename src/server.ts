@@ -1,11 +1,13 @@
 import "dotenv/config";
 import express from "express";
 import multer from "multer";
+import cors from "cors";
+import compression from "compression";
 import fs from "fs";
 import { generateImage } from "./index";
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 80;
 
 // Counter to ensure maximum 2 processes at a time
 let processingCount = 0;
@@ -18,6 +20,9 @@ const upload = multer({ storage });
 if (!fs.existsSync("./tmp")) {
     fs.mkdirSync("./tmp");
 }
+
+app.use(cors());
+app.use(compression({ level: 9, threshold: 0, filter: (req, res) => compression.filter(req, res) }));
 
 app.get("/", (req, res) => res.send("OK"));
 
